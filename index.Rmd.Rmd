@@ -1,0 +1,349 @@
+---
+title: "Exportaciones chinas a los mercados mundiales a finales de la década del 2010"
+author: 'Integrantes: Abril Pacheco Gamboa, Dayanne Centti, Santiago Vera'
+subtitle: "Curso: POL304 - Estadística para el Análisis Político 2"
+output:
+  prettydoc::html_pretty:
+    theme: cayman
+    highlight: github
+  rmdformats: default
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+
+```{r}
+knitr::include_graphics("logoPUCP.png") 
+```
+```{r message=FALSE, warning=FALSE}
+library(tidyverse)
+```
+
+
+INTRODUCCIÓN
+
+El objetivo de este reporte es dar respuesta a la interrogante de qué factores motivan la inserción de los productos chinos a un determinado mercado y cómo ello afecta al rápido crecimiento de su economía. En otras palabras, por qué China exporta sus productos más (o menos) hacia un determinado país según sus características fiscales, políticas, demográficas, etc.; y qué impacto tuvo esta relación en su crecimiento. Nuestra variable dependiente es la exportación china a los mercados mundiales a finales de la década del 2010, esta variable la mediremos en miles de US$ (dólares americanos).
+Nuestras variables independientes son:
+1. Nivel de democracia (reg_pol)
+2. Índice de Desarrollo Humano (idh)
+3. Índice de Corrupción (corrupcion)
+4. Participación en la Asia - Pacific Economic Cooperation (apec)
+5. Tratado de Libre Comercio con China (tlc)
+6. Cantidad de patentes (patentes)
+
+ANÁLISIS DE LA BASE
+
+a.Visualización del table creado
+La cantidad en miles de dólares estadounidenses que gastan países asociados en exporta de China se puede ver en la tabla a continuación:
+
+```{r message=FALSE, warning=FALSE}
+library(rio)
+data=import("Data_pais.xlsx")
+base <- na.omit(data)
+base
+```
+
+Se observa que en promedio se exportó en los últimos años de la década del 2010 alrededor de $20425371 al año. Luego de la limpieza de datos,se observan 92 casos, han desaparecido casos como la República Democrática de Corea, Santa Sede, Macao, Haití, Nicaragua, Tonga, Kiribati y entre otros. 
+Varios de los casos perdidos pertenecen a África, el medio Oriente o al Sudeste Asiático muy probablemente porque son de difícil acceso y no es posible la recolección de información sobre su territorio. Por otro lado, se tienen casos como la Santa Sede del Vaticano que no reconoce la República Popular China y reconocen a Taiwán. Por lo tanto, los casos perdidos podrían ser producto de un tipo de regimen autoritario, conflictos internos en el país o disputas con China.
+
+b.Exportaciones en miles de dólares según la cantidad de patentes
+
+```{r message=FALSE, warning=FALSE}
+library(ggplot2)
+library(ggthemes)
+p=ggplot(base, aes(x=patentes, y=export)) + geom_point() +
+  geom_point(size=1.5, shape=23) +
+  geom_text(label=base$asociados, vjust=-0.5, hjust = 1,color="black", size=3) +
+  
+  
+    labs(title = "Exportaciones en miles de $ y Número de Patentes",
+       subtitle = "Exportaciones y patentes",
+       x = "Patentes",
+       y = "Exportaciones en miles de $") +
+  
+  theme_fivethirtyeight()
+
+p
+```
+
+Como se observa en el gráfico, existe una ligera tendencia positiva entre la variable independiente "cantidad de patentes" y la variable dependiente "exportaciones chinas". Parece implicar que, a mayor cantidad de patentes, los países reciben mayor número de exportaciones chinas como es el caso de Estados Unidos, Japón, Vietanm, entre otros.Si observamos su gasto en miles de $ junto a su cantidad de patentes observamos tal correlación.
+
+MAPA VARIABLE DEPENDIENTE
+
+```{r message=FALSE, warning=FALSE}
+library(rio)
+data=import("Data_pais.xlsx")
+```
+
+```{r include=FALSE}
+library(sf) 
+mapWLD=sf::read_sf("world-administrative-boundaries.shp")
+head(mapWLD)
+```
+
+```{r message=FALSE, warning=FALSE}
+mapMUN=merge(mapWLD,data,by.x='iso3',by.y='codigo', all.x = T)
+
+```
+
+```{r message=FALSE, warning=FALSE}
+library(ggplot2)
+mapaleyendaL= ggplot(mapMUN)+ geom_sf() + theme_light()
+
+mapaleyL= mapaleyendaL + geom_sf(data = mapMUN,
+              aes(fill=export),color = NA)
+              
+```
+
+```{r message=FALSE, warning=FALSE}
+mapa3= mapaleyL +
+coord_sf() + 
+scale_fill_gradient(low = "#FDFEFE",  high = "blue", breaks=seq(from=0, to=61.25, by=20)) + theme_void() + 
+  
+theme(axis.title = element_blank(), axis.text = element_blank(), legend.position = c(0.16,0.1)) + labs(fill="export") + theme(legend.text = element_text(size = 10)) +
+  
+labs(title = "Distribución de las exportaciones chinas en el mundo", subtitle = "Exportaciones en miles de $") +
+  
+theme(
+plot.title = element_text(color="black", size=15, face="bold"),
+plot.caption = element_text(color = "black", size=10))
+
+mapa3
+```
+
+Como se puede observar las exportaciones chinas alrededor del mundo son significativamente altas sobre todo en Estados Unidos. Le siguen países como Japón, Corea, India, Alemania y  Canadá. En ese sentido, vemos que los países con mayor gasto en $ en exportaciones chinas no necesariamente pertenecen a un mismo continente. Aunque la región de Estados Unidos se encuentre con una tonalidad superior al resto del mapa, ello no le quita relevancia al hecho de que el mercado chino se enceuntra distribuído en todos los continentes. Contrariamente, regiones como África, parte de Europa y algunas zonas de América se encuentran en tonalidad gris debido a la falta de información que se tiene con respecto a sus interacciones económicas internacionales, bien puede ser porque estás son pocas, nulas o simplemente no se adquirieron datos de estas. En esa línea, cabe resaltar la posible influencia de sus regímenes autoritarios o su estatus con respecto a Tratados de Libre Comercio.
+
+
+TÉCNICA DE REDUCCIÓN DE DIMENSIONES: ANÁLISIS FACTORIAL
+
+Mediante esta técnica buscaremos crear una estructura simple mediante la reducción de variables a factores.En este trabajo se hace un Análisis Factorial Exploratorio.
+
+```{r}
+library(rio)
+data=import("Data_pais.xlsx")
+data$codigo=NULL
+data$asociados=NULL
+#Formato de las variables. 
+base <- na.omit(data)
+
+```
+
+```{r}
+dontselect=c("export")
+select=setdiff(names(base),dontselect) 
+theData=base[,select]
+```
+
+```{r echo=FALSE}
+library(polycor)
+corMatrix=polycor::hetcor(theData)$correlations
+```
+
+```{r echo=FALSE}
+library(ggcorrplot)
+```
+
+```{r}
+ggcorrplot(corMatrix)
+```
+
+Las celdas más oscuras o más claras indican correlaciones más fuertes o más débiles, respectivamente. En primer lugar, la variable Índice de Percepción de la Corrupción (corrupcion) gurada una considerable correlación con las variables Nivel de Democracia (reg_pol) e Índice de Desarrollo Humano (idh), ello indica que a mayor Índice de Percepción de la Corrupción es mayor el Nivel de Democracia y el Índice de Desarrollo Humano. Este primer análisis guarda sentido, ya que recordemos que el Índice de Percepción de la Corrupción establece un ranking el cuál va en una escala del 0 al 100, los valores bajos reflejan altos niveles de corrupción y los valores altos niveles bajos. Países con un alto Nivel de democracia y alto IDH son más propensos a posicionarse en altos niveles del ranking del Índice de percepción de corrupción. En segundo lugar, también se ve una correlación ligera entre la variable Patentes y las variables Nivel de Democracia (reg_pol), Índice de Desarrollo Humano (idh), Índice de Percepción de la Corrupción (corrupcion) y Participación en la Asia - Pacific Economic Cooperation (apec); ello nos indica hay una tendencia a que ha mayor cantidad de patentes mayor podría ser el nivel de democracia, el IDH, el país podrá estar mejor posicionado en el ranking de percepción de corrupción y posiblemente participe en la apec. En tercer lugar, se observa una relación considerable entre IDH y nivel de democracia (reg_po), lo que indica que a mayor nivel de democracia hay mayor IDH. En cuarto lugar, se observa la relación entre Participación en la Asia - Pacific Economic Cooperation (apec) y Tratado de Libre Comercio con China (tlc), lo cual hace entender países que son parte de la apec ´podrían también contar con un tlc con China.
+
+```{r include=FALSE}
+library(psych)
+```
+
+```{r include=FALSE}
+psych::KMO(corMatrix)
+```
+
+```{r include=FALSE}
+cortest.bartlett(corMatrix,n=nrow(theData))$p.value>0.05
+```
+```{r include=FALSE}
+library(matrixcalc)
+```
+
+
+```{r include=FALSE}
+
+is.singular.matrix(corMatrix)
+```
+
+a. Verificando si la matriz es adecuada:
+Luego de verificar si los datos permiten factorizar, obtenemos un KMO mayor a 0.6 por lo que es viable seguir con el procedimiento. Consecuentemente, se evaluan las pruebas de matriz, así verificamos que no estamos frente a unamatriz identidad ni una matriz singular puesto que el resultado de ambas pruebas arrojó falso.Todo ello indica que es viable continuar con el análisis factorial.
+
+b. Variables latentes o Factores:
+La función fa.parallel arrojó como sugerencia reducir nuestras seis variables a 2 factores.
+
+```{r echo=FALSE, warning=FALSE, include=FALSE}
+fa.parallel(theData, fa = 'fa',correct = T,plot = F)
+```
+
+```{r include=FALSE}
+library(GPArotation)
+```
+
+```{r message=FALSE, warning=FALSE, echo=FALSE, include=FALSE}
+resfa <- fa(theData,
+            nfactors = 2,
+            cor = 'mixed',
+            rotate = "varimax",
+            fm="minres")
+print(resfa$loadings)
+```
+
+```{r echo=FALSE, include=FALSE}
+print(resfa$loadings,cutoff = 0.5)
+```
+
+```{r}
+fa.diagram(resfa,main = "Resultados del EFA")
+```
+
+El gráfico demuestra que se ha reducido las variables corrupcion, idh y reg_pol a un solo factor. Un nombre adecuado para el factor podría ser "Índice de Gobernanza". Este captura la idea de medir la calidad de la gobernanza de un país, considerando aspectos como la corrupción, el desarrollo humano y el régimen político. El término "gobernanza" se utiliza ampliamente para describir la forma en que se ejerce el poder y se toman decisiones en una sociedad, y el factor en cuestión abarca aspectos importantes relacionados con la gobernanza de un país. Por otro lado, las variables apec, tlc y patentes se han reducido a un solo factor. Un nombre apropiado para este factor podría ser "Internacionalización y Propiedad Intelectual". Este nombre refleja la naturaleza de las variables que abarcan la relación de un país con acuerdos comerciales internacionales, como la membresía en la APEC y los tratados de libre comercio, junto con el aspecto de la propiedad intelectual representado por el número de patentes registradas. El factor captura la importancia de la internacionalización económica y la protección de la propiedad intelectual en el contexto de la actividad empresarial y la innovación tecnológica.
+
+TÉCNICA DE REDUCCIÓN DE DIMENSIONES: ANÁLISIS DE CONGLOMERADOS
+
+Mediante esta técnica vamos a agrupar a los países en función a sus características, para ello seguimos las tres estrategias: PAM, jerárquica y basada en densidad.
+
+En este trabajo solicitamos el número óptimo de clusters y se arrojó el resultado de 2.
+
+Optamos por la estrategia de aglomeración jerarquica, bajo el algoritmo DIANA, ya que ha demostrado mejor desempeño en el agrupamiento de casos y se verificó su desempeño mediante el cálculo de las silhouettes.
+
+```{r echo=FALSE, include=FALSE}
+library(rio)
+data=import("Data_pais.xlsx")
+#Formato de las variables.
+data$codigo=NULL
+base <- na.omit(data)
+```
+
+```{r, include=FALSE}
+dataClus=base[,c(3:8)]
+row.names(dataClus)=base$asociados
+```
+
+```{r echo=FALSE, warning=FALSE, include=FALSE}
+library(cluster)
+g.dist = daisy(dataClus, metric="gower")
+```
+
+```{r echo=FALSE, include=FALSE}
+#utilizando PAM
+library(factoextra)
+```
+
+
+
+```{r echo=FALSE,message=FALSE,warning=FALSE,eval=TRUE,fig.show='hold',fig.width=7,fig.height=5, fig.align="center"}
+set.seed(123)
+res.pam=pam(g.dist,10,cluster.only = F)
+#nueva columna
+dataClus$pam=res.pam$cluster
+# ver
+```
+
+```{r echo=FALSE,message=FALSE,warning=FALSE,eval=TRUE,fig.show='hold',fig.width=7,fig.height=5, fig.align="center"}
+fviz_silhouette(res.pam,print.summary = F)
+```
+
+
+```{r include=FALSE}
+set.seed(123)
+library(factoextra)
+res.agnes<- hcut(g.dist, k = 10,hc_func='agnes',hc_method = "ward.D")
+dataClus$agnes=res.agnes$cluster
+#head(dataClus,15)
+```
+
+```{r echo=FALSE,message=FALSE,warning=FALSE,eval=TRUE,fig.show='hold',fig.width=7,fig.height=5, fig.align="center"}
+fviz_silhouette(res.agnes, print.summary = FALSE)
+```
+
+
+
+```{r echo=FALSE}
+set.seed(123)
+res.diana <- hcut(g.dist, k = 2,hc_func='diana')
+dataClus$diana=res.diana$cluster
+
+```
+
+```{r}
+fviz_dend(res.diana, cex = 0.4, horiz = F, main = "DENDOGRAMA DE EXPORTACIONES CHINAS AL MUNDO")
+```
+
+```{r}
+fviz_silhouette(res.diana,print.summary = F)
+```
+
+```{r include=FALSE}
+silDIANA=data.frame(res.diana$silinfo$widths)
+silDIANA$country=row.names(silDIANA)
+poorDIANA=silDIANA[silDIANA$sil_width<0,'asociados']#%>%sort()
+```
+
+
+```{r include=FALSE}
+aggregate(.~ diana, data=dataClus,mean)
+```
+
+MODELANDO LAS EXPORTACIONES CHINAS: REGRESIÓN DE GAUSS
+
+
+```{r}
+library(rio)
+data=import("Data_pais.xlsx")
+base <- na.omit(data)
+```
+
+```{r}
+modelo1<-lm(export~corrupcion+tlc+patentes+ apec+ reg_pol , base)
+```
+
+Se obtiene la siguiente ecuación:
+Y = 16817097.897-14796.423(corrupcion)-3720024.485(tlc)+103.382(patentes)+27992698.966(apec)-1905658.974(reg_pol)
+```{r include=FALSE}
+library(modelsummary)
+```
+
+
+```{r echo=FALSE}
+
+
+model1=list('exportaciones (I)'=modelo1)
+modelsummary(model1,title = "Regresion de Gauss",
+             stars = TRUE,
+             cutput="kableExtra")
+```
+
+En la Regresión de las Exportaciones Chinas al mundo, incluyendo cinco de las seis variables planteadas en un inicio, evidencia que ser miembro del APEC y contar con una alta cantidad de patentes logran ser significantes en cuanto a las exportaciones chinas al mundo. Luego de obtener un R2 Adj. de 0.839 se entiende que la variable dependiente está explicada al 84% por el modelo creado. 
+
+
+
+$CONCLUSIONES$ 
+
+- Comenzamos este análisis con la pregunta de cuáles son los factores que motivan a la inserción de productos chinos a un determinado mercado en función de variables relacionadas a la corrupción, IDH, régimen político, TLC, participación en foros como el APEC, entre otras. 
+El análisis comenzó con una visualización de un mapa de calor que nos indicó la tendencia de exportación china que nos indicaba principales países de exportación china y evidencia los países de poca exportación: a nivel regional, se puede ver una diferencia y se tiene como dato destacado a EEUU como el principal destino de las exportaciones chinas. 
+
+- Se continuó con la técnica de análisis factorial  en la que se comenzó con una análisis de matriz de correlación para poder evidenciar visualmente grupos de correlación se sean posibles factores: 2 factores latentes. Al no tener una clara visualización de posibles factores, se procedió a continuar con las pruebas de matriz de identidad y matriz singular: ambas dieron negativo. Se continuó con el análisis factorial y la función fa.parallel arrojó como sugerencia reducir nuestras seis variables a 2 factores. Se propuso, entonces, dos factores latentes: el primero contenía a las variables corrupción, idh y régimen político a un solo factor que lo nominamos como “Índice de Gobernanza”; el segundo contendría las variables apec, tlc y patentes con el nombre apropiado de “Internacionalización y Propiedad Intelectual”. En análisis continuó con reducción de dimensiones con conglomerados en el que se realizó el método de clusterización, AGNES Y DIANA, siendo este último el mejor modelo, puesto que no presenta datos mal clusterizados. 
+
+- Así, las variables latentes que logramos simplificar son de naturaleza sociopolítica en el caso del "Índice de Gobernanza", y económica, para "Internacionalización y Propiedad Intelectual". Dejando en claro incluso que son los primeros factores de carácter político los que brindan una mayor explicación (con valores de 1, 0.7 y 0.8). Mientras que para la simplificación de los casos (filas) decidimos decantarnos por la técnica de jerarquización divisiva, al ser ésta la que tiene un mejor promedio (0.55) y todos los datos bien clusterizados. Por lo que nuestros países están mejor divididos en dos grupos.
+
+- Finalmente, respecto a la técnica de regresión lineal, el modelo demuestra que las variables más explicativas serían la pertenencia a la APEC y el número de patentes registradas por país, pues el p value de ambos factores es menor a 0.001. La pertenencia a este Foro de cooperación internacional demuestra ser un efectivo incentivo para el comercio entre sus miembros, mientras que un mayor número de patentes significa un alto nivel de emprendimiento y se traduce en la introducción de nuevos productos y servicios creados en dicho país; por lo que tal indicador representa una garantía de inversión en una economía dinámica y en crecimiento (OMPI 2020). Además, dado que buena parte de las exportaciones chinas corresponde a productos genéricos de bajo coste (respuestos electrónicos, ropa del "fast fashion", artículos plásticos, etc.), tiene sentido que sean los proveedores de nuevos comercios o servicios que apenas se introducen a los mercados.
+
+
+```{r echo=FALSE}
+library(rmdformats)
+```
+
+
+
+
+
+
+
